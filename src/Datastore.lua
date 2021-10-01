@@ -110,7 +110,7 @@ function Datastore:_retrieve()
             warn("DESERIALIZE_RETURNED_NIL")
             return nil, false
         elseif not suc then
-            warn("DESERIALIZE_ERROR")
+            warn("DESERIALIZE_ERROR", val)
             return nil, false
         end
     end
@@ -325,7 +325,7 @@ function Datastore:save()
     if suc and val == nil then
         return false, warn("SERIALIZE_RETURNED_NIL")
     elseif not suc then
-        return false, warn("SERIALIZE_ERROR")
+        return false, warn("SERIALIZE_ERROR", val)
     end
 
     if self:_i("Saving") then

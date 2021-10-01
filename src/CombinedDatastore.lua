@@ -110,7 +110,7 @@ function CombinedDatastore:_get()
                 val = newVal
             end
         else
-            warn("DESERIALIZE_ERROR")
+            warn("DESERIALIZE_ERROR", val)
         end
 
         self:_i("InitialGet", false)

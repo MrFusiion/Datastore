@@ -39,15 +39,19 @@ warns.INCREMENT_ERROR = "An error occurred while incrementing: %s"
 warns.COMBINE_KEYS_OVERIDE = "Tried to combine %s with %s while its allready combined with %s!"
 
 
---- Sends a warning message in chat if setting is not disabled
---- @param name string
---- @vararg any
 return function (name: string, ...)
-    local err = warns[name] and warns[name]:format(...)
-    if err and Settings.Warnings[name] then
-        warn(err, debug.traceback())
-        return err
-    else
-        warn(("Error %s is not valid!"):format())
-    end
+	local suc, e = pcall(function(name, ...)
+		local err = warns[name] and warns[name]:format(...)
+		if err and Settings.Warnings[name] then
+			warn(err, debug.traceback())
+			return err
+		else
+			warn(("Error %s is not valid!"):format())
+		end
+	end, name, ...)
+
+	if not suc then
+		assert(("Warning %s experienced an Error %s")
+			:format(name, e))
+	end
 end
