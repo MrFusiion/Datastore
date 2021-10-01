@@ -4,3 +4,12 @@
 # Roblox Studio lock files
 /*.rbxlx.lock
 /*.rbxl.lock
+
+#Rojo Project files
+/*.project.json
+
+/.gitignore
+
+
+#vscode
+/.vscode
