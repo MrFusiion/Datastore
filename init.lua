@@ -1,6 +1,6 @@
-local Teams = game:GetService("Teams")
 local Settings = require(script.Settings)
 local Type = require(script.Type)
+local Profile = require(script.Profile)
 local warn = require(script.Warnings)
 
 local Symbol = require(script.Symbol)
@@ -17,6 +17,7 @@ local CombinedDatastore = require(script.CombinedDatastore)
 local Closing = false
 local Cache = { [LEN] = 0 }
 local CombinedInfo = {}
+local Profiles = {}
 
 
 --- Gets a datastore from the cache.
@@ -28,7 +29,7 @@ local function getFromCache(scope: string, name: string)
         local store = Cache[scope][name]
         if store then
             info(("[Datastore.New]"), "Fetched from cache:", store:getName())
-            --*TODO: print Get Datastore From Cache
+            --*TODO print Get Datastore From Cache
             return store
         end
     end
@@ -44,12 +45,12 @@ local function remFromCache(scope: string, name: string)
         Cache[LEN] -= Cache[scope][LEN]
         Cache[scope] = nil
         info("[Datastore.Cache] Remove scope: ", scope, "New length: ", Cache[LEN])
-        --*TODO: print Remove Scope From Cache
+        --*TODO print Remove Scope From Cache
     elseif Cache[scope] then
         Cache[LEN] -= 1
         Cache[scope][LEN] -= 1
         info("[Datastore.Cache] Remove: ", Cache[scope][name]:getName(), "New length: ", Cache[LEN])
-        --*TODO: print Remove Datastore From Cache
+        --*TODO print Remove Datastore From Cache
         Cache[scope][name] = nil
     end
 
@@ -73,7 +74,7 @@ local function addToCache(scope: string, name: string, datastore: table)
         Cache[scope][name] = datastore
 
         info("[Datastore.Cache] Added: ", datastore:getName(), "New length: ", Cache[LEN])
-        --*TODO: print Added Datastore From Cache
+        --*TODO print Added Datastore From Cache
     else
         assert(false, ("Tried to overide an existing datastore in cache this is a BUG!")
             :format(Cache[LEN]))
@@ -121,14 +122,16 @@ local function getDatastore(name: string, scope: string, defaultValue: any, back
             return data
         end
 
-        store = CombinedDatastore.new(mainStore, name, defaultValue, backupValue)
+        local profile = Profiles[("%s.%s"):format(mainName, name)]
+        store = CombinedDatastore.new(mainStore, name, defaultValue, backupValue, profile)
         info(("[Datastore.New]"), "Created new CombinedDatastore:", store:getName())
         addToCache(scope, name, store)
         --*TODO print Created New CombinedDatastore
         return store
     end
 
-    store = Datastore.new(name, scope, defaultValue, backupValue)
+    local profile = Profiles[name]
+    store = Datastore.new(name, scope, defaultValue, backupValue, profile)
     info(("[Datastore.New]"), "Created new Datastore:", store:getName())
     addToCache(scope, name, store)
     --*TODO print Created New Datastore
@@ -160,6 +163,18 @@ function Lib.combine(mainKey: string, ...: {string})
 end
 
 
+--- Creates a specific profile for .
+--- @param name string
+--- @param profile table
+function Lib.addProfile(name: string, profile: {string: any})
+    if not Profiles[name] then
+        Profiles[name] = Profile.new(profile)
+    else
+        warn("PROFILE_OVERIDE", name)
+    end
+end
+
+
 --- Creates a new Datastore for a specific player
 --- @param player Player
 --- @param name string
@@ -169,7 +184,7 @@ end
 function Lib.player(player: Player, name: string, defaultValue: any, backupValue: any)
     local store = getDatastore(name, player.UserId, defaultValue, backupValue)
 
-    --TODO fix saving
+    --*TODO fix saving
 
     return store
 end

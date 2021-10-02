@@ -24,7 +24,8 @@ local Datastore_mt = { __index = Datastore }
 --- @param scope string
 --- @param defaultValue any
 --- @param backupValue any
-function Datastore.new(name: string, scope: string, defaultValue: any, backupValue: any)
+--- @param profile table
+function Datastore.new(name: string, scope: string, defaultValue: any, backupValue: any, profile: table)
     local self = {}
 
     self.Name = name
@@ -54,6 +55,9 @@ function Datastore.new(name: string, scope: string, defaultValue: any, backupVal
         }
     }
 
+    if profile then
+        return setmetatable(self, profile.Datastore)
+    end
     return setmetatable(self, Datastore_mt)
 end
 
@@ -131,8 +135,8 @@ function Datastore:_get()
         --Retrieve value
         val, suc = self:_retrieve()
 
-        local dVal = self:_i("DefaultValue")
-        local bVal = self:_i("BackupValue")
+        local dVal = self:GetDefaultValue()
+        local bVal = self:GetBackupValue()
 
         if suc then
             self:_i("HasValue", true)
@@ -217,6 +221,18 @@ end
 --- @return any
 function Datastore:deserialize(data: any)
     return data
+end
+
+
+--- Get backup value.
+function Datastore:GetDefaultValue()
+    return self.DefaultValue or self[Intr].DefaultValue
+end
+
+
+--- Get backup value.
+function Datastore:GetBackupValue()
+    return self.BackupValue or self[Intr].BackupValue
 end
 
 

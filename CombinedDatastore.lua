@@ -21,10 +21,11 @@ local CombinedDatastore_mt = { __index = CombinedDatastore }
 --- @param name string
 --- @param defaultValue any
 --- @param backupValue any
-function CombinedDatastore.new(mainstore: table, name: string, defaultValue: any, backupValue: any)
+--- @param profile table
+function CombinedDatastore.new(mainstore: table, name: string, defaultValue: any, backupValue: any, profile: table)
     local self = {}
 
-    self.Name = ("%s/%s"):format(mainstore:getName(), name)
+    self.Name = ("%s.%s"):format(mainstore:getName(), name)
 
     self[Intr] = {
         Key = name,
@@ -42,6 +43,9 @@ function CombinedDatastore.new(mainstore: table, name: string, defaultValue: any
         }
     }
 
+    if profile then
+        return setmetatable(self, profile.CombinedDatastore)
+    end
     return setmetatable(self, CombinedDatastore_mt)
 end
 
@@ -84,8 +88,8 @@ function CombinedDatastore:_get()
     local t = mStore:_get()
     local val = t[key]
 
-    local bVal = self:_i("BackupValue")
-    local dVal = self:_i("DefaultValue")
+    local bVal = self:GetBackupValue()
+    local dVal = self:GetDefaultValue()
 
     if mStore:isBackup() and bVal then
         val = bVal
@@ -93,14 +97,14 @@ function CombinedDatastore:_get()
         mStore:_set(t)
 
         info(("[CombinedDatastore.Set][%s]"):format(self:getName()), "BackupValue:", val)
-        --*TODO: print Set Backup Value
+        --*TODO print Set Backup Value
     elseif val == nil and dVal then
         val = dVal
         t[key] = val
         mStore:_set(t)
 
         info(("[CombinedDatastore.Set][%s]"):format(self:getName()), "DefaultValue:", val)
-        --*TODO: print Set Default Value
+        --*TODO print Set Default Value
     elseif self:_i("InitialGet") then
         local suc, newVal = pcall(self.deserialize, self, clone(val))
         if suc then
@@ -108,14 +112,16 @@ function CombinedDatastore:_get()
                 warn("DESERIALIZE_RETURNED_NIL")
             else
                 val = newVal
+                t[key] = val
+                mStore:_set(t)
             end
         else
-            warn("DESERIALIZE_ERROR", val)
+            warn("DESERIALIZE_ERROR", newVal)
         end
 
         self:_i("InitialGet", false)
         info(("[Datastore.Get][%s]"):format(self:getName()), "Initial:", val)
-        --*TODO: print Initial Get
+        --*TODO print Initial Get
     end
 
     return val
@@ -164,6 +170,18 @@ function CombinedDatastore:deserialize(data: any)
 end
 
 
+--- Get backup value.
+function CombinedDatastore:GetDefaultValue()
+    return self.DefaultValue or self[Intr].DefaultValue
+end
+
+
+--- Get backup value.
+function CombinedDatastore:GetBackupValue()
+    return self.BackupValue or self[Intr].BackupValue
+end
+
+
 --- Returns a boolean that indicates if the value is a backup value.
 --- @return boolean
 function CombinedDatastore:isBackup()
@@ -183,7 +201,7 @@ end
 function CombinedDatastore:get()
     local val = self:_get()
     info(("[CombinedDatastore.Get][%s]"):format(self:getName()), val)
-    --*TODO: print Get Value
+    --*TODO print Get Value
     return val
 end
 
@@ -193,7 +211,7 @@ end
 function CombinedDatastore:set(value: any)
     self:_set(value)
     info(("[CombinedDatastore.Set][%s]"):format(self:getName()), value)
-    --*TODO: print Set Value
+    --*TODO print Set Value
 end
 
 
@@ -207,7 +225,7 @@ function CombinedDatastore:update(f: thread)
         val = val ~= None and val or nil
         self:_set(clone(val))
         info(("[CombinedDatastore.Update][%s]"):format(self:getName()), val)
-        --*TODO: print Update value
+        --*TODO print Update value
     elseif suc and  val == nil then
         warn("UPDATE_RETURNED_NIL")
     elseif not suc then
@@ -228,7 +246,7 @@ function CombinedDatastore:increment(value: any)
         self:_set(newVal)
 
         info(("[CombinedDatastore.Increment][%s]"):format(self:getName()), newVal)
-        --*TODO: print Increment Value
+        --*TODO print Increment Value
     else
         warn("INCREMENT_ERROR", newVal)
     end
