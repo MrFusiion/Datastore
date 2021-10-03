@@ -24,7 +24,8 @@ local Datastore_mt = { __index = Datastore }
 --- @param scope string
 --- @param defaultValue any
 --- @param backupValue any
-function Datastore.new(name: string, scope: string, defaultValue: any, backupValue: any)
+--- @param profile table
+function Datastore.new(name: string, scope: string, defaultValue: any, backupValue: any, profile: table)
     local self = {}
 
     self.Name = name
@@ -54,6 +55,9 @@ function Datastore.new(name: string, scope: string, defaultValue: any, backupVal
         }
     }
 
+    if profile then
+        return setmetatable(self, profile.Datastore)
+    end
     return setmetatable(self, Datastore_mt)
 end
 
@@ -110,7 +114,7 @@ function Datastore:_retrieve()
             warn("DESERIALIZE_RETURNED_NIL")
             return nil, false
         elseif not suc then
-            warn("DESERIALIZE_ERROR")
+            warn("DESERIALIZE_ERROR", val)
             return nil, false
         end
     end
@@ -123,6 +127,16 @@ end
 
 
 --- [**Private**]\
+--- Sets the value in the datastore.
+--- @param value any
+function Datastore:_set(value: any)
+    self:_i("Value", clone(value))
+    self:_i("ValueUpdated", true)
+    self:_fire("OnUpdate", value)
+end
+
+
+--- [**Private**]\
 --- Returns the current value in the datastore.
 --- @return any
 function Datastore:_get()
@@ -131,8 +145,8 @@ function Datastore:_get()
         --Retrieve value
         val, suc = self:_retrieve()
 
-        local dVal = self:_i("DefaultValue")
-        local bVal = self:_i("BackupValue")
+        local dVal = self:GetDefaultValue()
+        local bVal = self:GetBackupValue()
 
         if suc then
             self:_i("HasValue", true)
@@ -153,7 +167,7 @@ function Datastore:_get()
             --*TODO: print Set Backup Backup Value
         end
 
-        self:_i("Value", val)
+        self:_set(val)
 
         info(("[Datastore.Get][%s]"):format(self:getName()), "Initial:", val)
         --*TODO: print Initial Get
@@ -163,16 +177,6 @@ function Datastore:_get()
         val = self:_i("Value")
     end
     return val
-end
-
-
---- [**Private**]\
---- Sets the value in the datastore.
---- @param value any
-function Datastore:_set(value: any)
-    self:_i("Value", clone(value))
-    self:_i("ValueUpdated", true)
-    self:_fire("OnUpdate", value)
 end
 
 
@@ -204,6 +208,13 @@ function Datastore:getName()
 end
 
 
+--- Returns the datastore scope.
+--- @return string | number
+function Datastore:getScope()
+    return self:_i("Scope")
+end
+
+
 --- Should be overiden.
 --- Gets called when data gets saved.
 --- @return any
@@ -217,6 +228,18 @@ end
 --- @return any
 function Datastore:deserialize(data: any)
     return data
+end
+
+
+--- Get backup value.
+function Datastore:GetDefaultValue()
+    return self.DefaultValue or self[Intr].DefaultValue
+end
+
+
+--- Get backup value.
+function Datastore:GetBackupValue()
+    return self.BackupValue or self[Intr].BackupValue
 end
 
 
@@ -321,11 +344,13 @@ function Datastore:save()
         return false, warn("SAVE_NO_DATA")
     end
 
-    local suc, val = pcall(self.serialize, self, clone(val))
-    if suc and val == nil then
+    local suc, newVal = pcall(self.serialize, self, clone(val))
+    if suc and newVal == nil then
         return false, warn("SERIALIZE_RETURNED_NIL")
     elseif not suc then
-        return false, warn("SERIALIZE_ERROR")
+        return false, warn("SERIALIZE_ERROR", newVal)
+    else
+        val = newVal
     end
 
     if self:_i("Saving") then
