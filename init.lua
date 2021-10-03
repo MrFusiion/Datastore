@@ -20,10 +20,40 @@ local CombinedInfo = {}
 local Profiles = {}
 
 
+--- Removes the [state] from a name example: Data[slot1] > Data
+--- @param name string
+--- @return string
+local function raw(name: string): string
+    return name:gsub("%[+.-%]+", "")
+end
+
+
+--- Get [state] from a name example: Data[slot1] > Data
+--- @param name String
+--- @return String
+local function state(name: string): string
+    local s = name:match("%[+.-%]+")
+    return s and s:sub(2, -2)
+end
+
+
+--- Sets [state] from a name example: Data, Slot1 > Data[Slot1]
+--- @param name String
+--- @param state String | nil
+--- @return String
+local function setState(name: string, state: string | nil): string
+    if state then
+        return ("%s[%s]"):format(name, state)
+    end
+    return raw(name)
+end
+
+
 --- Gets a datastore from the cache.
 --- @param name string
 --- @param scope string
-local function getFromCache(scope: string, name: string)
+--- @return table
+local function getFromCache(scope: string, name: string): table
     local scope = scope or Global
     if Cache[scope] then
         local store = Cache[scope][name]
@@ -64,7 +94,8 @@ end
 --- Adds the datastore to the cache.
 --- @param name string
 --- @param scope string
---- @param datastore Datastore | CombinedDatastore
+---  disable-next-line
+--- @diagnostic disable-line | @param datastore Datastore | CombinedDatastore
 local function addToCache(scope: string, name: string, datastore: table)
     local scope = scope or Global
     Cache[scope] = Cache[scope] or { [LEN] = 0 }
@@ -93,17 +124,19 @@ end
 --- @param defaultValue any
 --- @param backupValue any
 local function getDatastore(name: string, scope: string, defaultValue: any, backupValue: any)
+    local rawName = raw(name)
     local store = getFromCache(scope, name)
     if store then
         return store
-    elseif CombinedInfo[name] then
-        local mainName = CombinedInfo[name]
+    elseif CombinedInfo[rawName] then
+        local rawMainName = CombinedInfo[rawName]
+        local mainName = setState(rawMainName, state(name))
         local mainStore = getDatastore(mainName, scope, {}, {})
 
         function mainStore:serialize(data)
             for k in pairs(data) do
-                if CombinedInfo[k] == mainName then
-                    local subStore = getDatastore(k, scope)
+                if CombinedInfo[k] == rawMainName then
+                    local subStore = getDatastore(setState(k, state(mainName)), scope)
                     local suc, val = nil, subStore:_get()
                     if val ~= nil then
                         suc, val = pcall(subStore.serialize, self, clone(val))
@@ -122,20 +155,27 @@ local function getDatastore(name: string, scope: string, defaultValue: any, back
             return data
         end
 
-        local profile = Profiles[("%s.%s"):format(mainName, name)]
-        store = CombinedDatastore.new(mainStore, name, defaultValue, backupValue, profile)
+        local profileName = ("%s.%s"):format(rawMainName, rawName)
+        store = CombinedDatastore.new(mainStore, rawName, defaultValue, backupValue, Profiles[profileName])
         info(("[Datastore.New]"), "Created new CombinedDatastore:", store:getName())
         addToCache(scope, name, store)
         --*TODO print Created New CombinedDatastore
         return store
     end
 
-    local profile = Profiles[name]
-    store = Datastore.new(name, scope, defaultValue, backupValue, profile)
+    store = Datastore.new(name, scope, defaultValue, backupValue, Profiles[rawName])
     info(("[Datastore.New]"), "Created new Datastore:", store:getName())
     addToCache(scope, name, store)
     --*TODO print Created New Datastore
     return store
+end
+
+
+--- Returns true if the name consist of non-illegal characters or else false.
+--- @param name string
+--- @return boolean
+local function isValidName(name: string): boolean
+    return name:match("%p") == nil
 end
 
 
@@ -153,7 +193,17 @@ local Lib = {}
 --- @param mainKey string
 --- @vararg string
 function Lib.combine(mainKey: string, ...: {string})
+    if not isValidName(mainKey) then
+        warn("COMBINE_KEYS_ILLEGAL_SYMBOLS", mainKey)
+        return
+    end
+
     for _, name in ipairs{...} do
+        if not isValidName(name) then
+            warn("COMBINE_KEYS_ILLEGAL_SYMBOLS", name)
+            continue
+        end
+
         if not CombinedInfo[name] then
             CombinedInfo[name] = mainKey
         elseif CombinedInfo[name] ~= mainKey then
@@ -175,6 +225,14 @@ function Lib.addProfile(name: string, profile: {string: any})
 end
 
 
+--- Remove from cache if not name is provide the full scope will be removed.
+--- @param scope string
+--- @param name string | nil
+function Lib.removeFromCach(scope: string, name: (string | nil))
+    remFromCache(scope, name)
+end
+
+
 --- Creates a new Datastore for a specific player
 --- @param player Player
 --- @param name string
@@ -183,8 +241,6 @@ end
 --- @return Datastore | CombinedDatastore
 function Lib.player(player: Player, name: string, defaultValue: any, backupValue: any)
     local store = getDatastore(name, player.UserId, defaultValue, backupValue)
-
-    --*TODO fix saving
 
     return store
 end

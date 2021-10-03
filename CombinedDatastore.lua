@@ -80,6 +80,18 @@ end
 
 
 --- [**Private**]\
+--- Sets the value in the datastore.
+--- @param value any
+function CombinedDatastore:_set(value: any)
+    self:_i("Mainstore"):update(function(data)
+        data[self:_i("Key")] = value
+        return data
+    end)
+    self:_fire("OnUpdate", value)
+end
+
+
+--- [**Private**]\
 --- Returns the current value in the datastore.
 --- @return any
 function CombinedDatastore:_get()
@@ -128,18 +140,6 @@ function CombinedDatastore:_get()
 end
 
 
---- [**Private**]\
---- Sets the value in the datastore.
---- @param value any
-function CombinedDatastore:_set(value: any)
-    self:_i("Mainstore"):update(function(data)
-        data[self:_i("Key")] = value
-        return data
-    end)
-    self:_fire("OnUpdate", value)
-end
-
-
 --[[
     ___________________________________________________________________________________
     Public
@@ -151,6 +151,13 @@ end
 --- @return string
 function CombinedDatastore:getName()
     return self.Name
+end
+
+
+--- Returns the datastore scope.
+--- @return string | number
+function CombinedDatastore:getScope()
+    return self:_i("Mainstore"):getScope()
 end
 
 

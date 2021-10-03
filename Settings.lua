@@ -141,7 +141,7 @@ return Settings.new({
         SAVE_IN_STUDIO = newWarnValue(),
         SAVE_BACKUP_VALUE = newWarnValue(),
         SAVE_VALUE_NOT_UPDATED = newWarnValue(),
-        SAVE_NO_VALUE = newWarnValue(),
+        SAVE_NO_DATA = newWarnValue(),
         SAVE_MAX_QUEUE_SIZE = newWarnValue(),
 
         SAVE_SERIALIZE_RETURNED_NIL = newWarnValue(),

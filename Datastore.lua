@@ -127,6 +127,16 @@ end
 
 
 --- [**Private**]\
+--- Sets the value in the datastore.
+--- @param value any
+function Datastore:_set(value: any)
+    self:_i("Value", clone(value))
+    self:_i("ValueUpdated", true)
+    self:_fire("OnUpdate", value)
+end
+
+
+--- [**Private**]\
 --- Returns the current value in the datastore.
 --- @return any
 function Datastore:_get()
@@ -157,7 +167,7 @@ function Datastore:_get()
             --*TODO: print Set Backup Backup Value
         end
 
-        self:_i("Value", val)
+        self:_set(val)
 
         info(("[Datastore.Get][%s]"):format(self:getName()), "Initial:", val)
         --*TODO: print Initial Get
@@ -167,16 +177,6 @@ function Datastore:_get()
         val = self:_i("Value")
     end
     return val
-end
-
-
---- [**Private**]\
---- Sets the value in the datastore.
---- @param value any
-function Datastore:_set(value: any)
-    self:_i("Value", clone(value))
-    self:_i("ValueUpdated", true)
-    self:_fire("OnUpdate", value)
 end
 
 
@@ -205,6 +205,13 @@ end
 --- @return string
 function Datastore:getName()
     return self.Name
+end
+
+
+--- Returns the datastore scope.
+--- @return string | number
+function Datastore:getScope()
+    return self:_i("Scope")
 end
 
 
@@ -337,11 +344,13 @@ function Datastore:save()
         return false, warn("SAVE_NO_DATA")
     end
 
-    local suc, val = pcall(self.serialize, self, clone(val))
-    if suc and val == nil then
+    local suc, newVal = pcall(self.serialize, self, clone(val))
+    if suc and newVal == nil then
         return false, warn("SERIALIZE_RETURNED_NIL")
     elseif not suc then
-        return false, warn("SERIALIZE_ERROR", val)
+        return false, warn("SERIALIZE_ERROR", newVal)
+    else
+        val = newVal
     end
 
     if self:_i("Saving") then
