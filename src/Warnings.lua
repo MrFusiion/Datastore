@@ -37,6 +37,8 @@ warns.INCREMENT_ERROR = "An error occurred while incrementing: %s"
 
 --- Libary
 warns.COMBINE_KEYS_OVERIDE = "Tried to combine %s with %s while its allready combined with %s!"
+warns.COMBINE_KEYS_ILLEGAL_SYMBOLS = "the key %s contains illegal symbols!"
+warns.PROFILE_OVERIDE = "Tried to overide an existing profile %s!"
 
 
 return function (name: string, ...)
